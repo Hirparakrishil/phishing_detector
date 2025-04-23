@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détecteur de Sites Malveillants</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="url"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .safe {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .dangerous {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Détecteur de Sites Malveillants</h1>
+        <p>Vérifiez si un site web est potentiellement dangereux ou légitime.</p>
+        
+        <div class="form-group">
+            <label for="url">URL du site à vérifier :</label>
+            <input type="url" id="url" name="url" placeholder="https://exemple.com" required>
+        </div>
+        
+        <button onclick="checkURL()">Analyser</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function checkURL() {
+            const urlInput = document.getElementById('url').value;
+            const resultDiv = document.getElementById('result');
+            
+            // Add URL validation
+            try {
+                const url = new URL(urlInput);
+                if (!url.protocol.startsWith('http')) {
+                    throw new Error('Invalid protocol');
+                }
+                
+                // Attempt to analyze the URL
+                const response = await fetch('http://localhost:5000/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: urlInput })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Server response error');
+                }
+                
+                const data = await response.json();
+                
+                if (data.is_phishing) {
+                    resultDiv.className = 'dangerous';
+                    resultDiv.innerHTML = `
+                        <h3>⚠️ Site Potentially Dangerous</h3>
+                        <p>This site shows suspicious characteristics:</p>
+                        <ul>
+                            ${Object.entries(data.features)
+                                .map(([key, value]) => `<li>${key}: ${value}</li>`)
+                                .join('')}
+                        </ul>
+                    `;
+                } else {
+                    resultDiv.className = 'safe';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Secure Site</h3>
+                        <p>This site appears legitimate with ${(data.confidence * 100).toFixed(1)}% confidence</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'dangerous';
+                resultDiv.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p>${error.message === 'Invalid protocol' ? 
+                        'Please enter a valid URL starting with http:// or https://' : 
+                        'Unable to analyze the URL. Please try again.'}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
